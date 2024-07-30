@@ -53,9 +53,10 @@ def get_fk_servicio_values():
 
 def delete_records_all_tables():
     # Datos de conexión
-    host = "localhost"
-    port = "5432"  # Puerto predeterminado de PostgreSQL
-    database = "dw_ws"  # Reemplazar por el nombre real de la base de datos
+
+    database = "ws_datawarehouse"
+    host = "34.229.102.45"
+    port = "5432"
     user = "postgres"
     password = "ignacio"
 

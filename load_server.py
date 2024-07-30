@@ -41,11 +41,20 @@ def load_dimensions(df, initial_index):
         es la llave que une el datawarehouse.
     """
     # Datos de conexión
+    '''
+    database = "ws_datawarehouse"
+    host = "34.229.102.45"
+    port = "5432"
+    user = "postgres"
+    password = "ignacio"
+    '''
+
     host = "localhost"
     port = "5432"  # Puerto predeterminado de PostgreSQL
     database = "dw_ws"  # Reemplazar por el nombre real de la base de datos
     user = "postgres"
     password = "ignacio"
+
 
     # Establece la conexión a la base de datos PostgreSQL
     conn = psycopg2.connect(
@@ -65,8 +74,7 @@ def load_dimensions(df, initial_index):
 
     # Itera a través de las filas del DataFrame 'df' e inserta los datos en ambas tablas
     for index, row in df.iterrows():
-        index = int(index + initial_index)
-        print(index, initial_index)
+        print("Dimentions load index:",index)
         n_carpeta = row['n_carpeta']
 
         #DIM TRACKING 
@@ -183,11 +191,13 @@ def load_dimensions(df, initial_index):
 def load_fact_table(df, initial_index):
 
     # Datos de conexión
-    host = "localhost"
-    port = "5432"  # Puerto predeterminado de PostgreSQL
-    database = "dw_ws"  # Reemplazar por el nombre real de la base de datos
+
+    database = "ws_datawarehouse"
+    host = "34.229.102.45"
+    port = "5432"
     user = "postgres"
     password = "ignacio"
+ 
 
     # Establece la conexión a la base de datos PostgreSQL
     conn = psycopg2.connect(
@@ -206,9 +216,7 @@ def load_fact_table(df, initial_index):
     
     # Itera a través de las filas del DataFrame 'df' e inserta los datos en ambas tablas
     for index, row in df.iterrows():
-        print("index_entrada", index)
-        print(index, initial_index)
-        index = int(index + initial_index)
+        print("Fact table load index:",index)
         #FACT TABLE SERVICIO
         fecha_creacion_consolidado_comercial = row['fecha_de_creacion_del_consolidado']
         id_dim_contenedor = index
@@ -268,40 +276,51 @@ def loader(df, initial_index, batch_size, tipo_carga="incremental"):
 
     lenght = len(df)
     #print(lenght)
-
     index_dimension = initial_index
     index_fact = initial_index
     index = initial_index
-
+    
     while index < lenght + initial_index:
         
         try:
-            index_dimension = index
-            print("index_dimension", index_dimension,
-                  index_dimension + batch_size)
-            index_dimension = load_dimensions(
-                df, index_dimension)
+            # Calcular el índice final del lote
+
+            end_index = min(index_dimension + batch_size, lenght)
+            # Extraer el lote del DataFrame
+            df_batch = df.iloc[index_dimension:end_index]
+
+            print(f"Procesando lote desde {index_dimension} hasta {end_index}")
+            # Cargar el lote en las dimensiones
+            load_dimensions(df_batch, index_dimension)
+
+            # Actualizar el índice para el siguiente lote
+            index_dimension += batch_size
+            print(f"Dimensiones cargadas hasta el índice {index_dimension}")
         except:
             print("fallo dimension")
 
             # Pausa de 5 segundos
             time.sleep(5)
             pass
-
         try:
-            index_fact = index
-            print("index_fact", index_fact)
-            index_fact = load_fact_table(
-                df, index_fact)
+            # Calcular el índice final del lote
+            end_index = min(index_fact + batch_size, lenght)
+
+            # Extraer el lote del DataFrame
+            df_batch = df.iloc[index_fact:end_index]
+            print(f"Procesando lote desde {index_fact} hasta {end_index}")
+
+            # Cargar el lote en la tabla de hechos
+            load_fact_table(df_batch, index_fact)
+
+            # Actualizar el índice para el siguiente lote
+            index_fact += batch_size
+            print(f"Fact table cargada hasta el índice {index_fact}")
         except:
             print("fallo hechos")
             time.sleep(5)
             pass
-
-        print("Proceso terminado")
-        break
-        initial_index2 = initial_index2 + batch_size
-        index = min(index_dimension, index_fact)
+        index += batch_size
         
 
 
