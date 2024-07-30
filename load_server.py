@@ -41,21 +41,13 @@ def load_dimensions(df, initial_index):
         es la llave que une el datawarehouse.
     """
     # Datos de conexión
-    '''
+    
     database = "ws_datawarehouse"
     host = "34.229.102.45"
     port = "5432"
     user = "postgres"
     password = "ignacio"
-    '''
-
-    host = "localhost"
-    port = "5432"  # Puerto predeterminado de PostgreSQL
-    database = "dw_ws"  # Reemplazar por el nombre real de la base de datos
-    user = "postgres"
-    password = "ignacio"
-
-
+    
     # Establece la conexión a la base de datos PostgreSQL
     conn = psycopg2.connect(
         host=host,
