@@ -84,7 +84,8 @@ def delete_records_all_tables():
             TRUNCATE TABLE sla.finanzas CASCADE;
             TRUNCATE TABLE sla.proveedor CASCADE;
             TRUNCATE TABLE sla.contenedor CASCADE;
-            TRUNCATE TABLE sla.tracking CASCADE;        
+            TRUNCATE TABLE sla.tracking CASCADE;  
+            TRUNCATE TABLE sla.caracteristicas_comerciales CASCADE;        
         """
         #DELETE FROM public.facturas WHERE fk_servicio IN ({fk_servicio_values_str});
         # Ejecuta la consulta SQL
