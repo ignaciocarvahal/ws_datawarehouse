@@ -90,6 +90,7 @@ def load_dimensions(df, initial_index):
     finanzas_data = []
     contenedor_data = []
     cliente_data = []
+    caracteristicas_data = []
 
     # Itera a través de las filas del DataFrame 'df' e inserta los datos en ambas tablas
     for index, row in df.iterrows():
@@ -134,6 +135,11 @@ def load_dimensions(df, initial_index):
             row['ejecutivo'], row['ejecutivo_cuenta'], row['id_cliente']
         ))
 
+        #DIM CARACTERISTICAS
+        caracteristicas_data.append((
+            index, row['ejecutivo'], row['ejecutivo_cuenta'], row['comuna'],
+            row['chofer'], row['estado_entrega'], row['tipo_de_entrega'], row['bodega_recepcion'], row['nombre_nave'], row['aforo'], row['estado_despacho']))
+
     # Consultas SQL
     tracking_query = """INSERT INTO sla.tracking(
         id_dim_tracking, tracking_id, n_carpeta, m3_recibidos, bultos_recepcionados, m3_esperados, peso_esperado, bultos_esperados
@@ -153,6 +159,9 @@ def load_dimensions(df, initial_index):
     cliente_query = """INSERT INTO sla.cliente(
         id_dim_cliente, n_carpeta, fecha_creacion_cliente, razon_social_cliente, ejecutivo, ejecutivo_cuenta, id_cliente
     ) VALUES """
+    caracteristicas_query = """INSERT INTO sla.caracteristicas_comerciales(
+	    id_dim_caracteristicas, ejecutivo, ejecutivo_cuenta, comuna, chofer, estado_entrega, tipo_de_entrega, bodega_recepcion, nombre_nave, aforo, estado_despacho
+    ) VALUES"""
     
     execute_bulk_insert(cursor, tracking_query, tracking_data)
     print("DIM TRACKING CARGADA")
@@ -166,6 +175,8 @@ def load_dimensions(df, initial_index):
     print("DIM CONTENEDOR CARGADA")
     execute_bulk_insert(cursor, cliente_query, cliente_data)
     print("DIM CLIENTE CARGADA")
+    execute_bulk_insert(cursor, caracteristicas_query, caracteristicas_data)
+    print("DIM CARACTERISTICAS CARGADA")
 
     # Confirma los cambios en la base de datos
     conn.commit()
@@ -220,7 +231,7 @@ def load_fact_table(df, initial_index):
         # FACT TABLE SERVICIO
         fact_servicio_data.append((
             index, row['fecha_de_creacion_del_consolidado'], index, index, row['n_carpeta'],
-            row['id_consolidado_comercial'], index, index, index
+            row['id_consolidado_comercial'], index, index, index, index
         ))
 
         # FACT TABLE CARPETA
@@ -232,7 +243,7 @@ def load_fact_table(df, initial_index):
     # Consultas SQL
     fact_servicio_query = """INSERT INTO sla.fact_servicio(
         id_servicio, fecha_creacion_consolidado_comercial, id_dim_contenedor, id_dim_finanzas, n_carpeta, 
-        id_consolidado_comercial, id_dim_hitos, id_dim_proveedor, id_dim_tracking
+        id_consolidado_comercial, id_dim_hitos, id_dim_proveedor, id_dim_tracking, id_dim_caracteristicas
     ) VALUES """
     fact_carpeta_query = """INSERT INTO sla.fact_carpeta(
         id_fact_carpeta, sla_1, sla_2, sla_3, id_dim_cliente, sla_4, sla_5, sla_6, sla_7, sla_8, sla_10, sla_11, n_carpeta
