@@ -2,7 +2,7 @@ from datetime import datetime
 import pandas as pd
 import psycopg2
 
-from constants import FECHAS_NO_CONTEMPLADAS, DICCIONARIO_NOMBRES_NUMEROS, DICCIONARIO_NUMEROS_NOMBRES, COLUMNAS_FECHA
+from constants import FECHAS_NO_CONTEMPLADAS, DICCIONARIO_NOMBRES_NUMEROS, DICCIONARIO_NUMEROS_NOMBRES, COLUMNAS_FECHA, NUMERIC_COLUMNS
 
 def time_stamp(time):
     """
@@ -75,7 +75,7 @@ def connect_and_select():
 
         cur = conn.cursor()
 
-        query = """SELECT * FROM public.sla_00_completo;"""
+        query = """SELECT * FROM public.sla_00_completo limit 1000;"""
         cur.execute(query)
 
         rows = cur.fetchall()
@@ -192,6 +192,31 @@ def sla_calculo(df):
     return df
 
 
+def clean_numeric_columns(df, numeric_columns):
+    """
+    Limpia y convierte las columnas numéricas de un DataFrame.
+    
+    Parameters
+    ----------
+    df : DataFrame pandas object
+        El DataFrame que contiene las columnas a limpiar.
+    numeric_columns : list of str
+        Lista de nombres de columnas que deben limpiarse y convertirse a numérico.
+    
+    Returns
+    -------
+    df : DataFrame pandas object
+        El DataFrame con las columnas numéricas limpiadas y convertidas.
+    """
+    def clean_numeric(column):
+        return pd.to_numeric(column.astype(str).str.replace(',', '.'), errors='coerce')
+
+    for col in numeric_columns:
+        df[col] = clean_numeric(df[col])
+
+    return df
+
+
 def data_base_cleanser(df):
     """
     Limpia y transforma los datos de la base de datos, cambiando el formato de las fechas.
@@ -212,7 +237,9 @@ def data_base_cleanser(df):
     df = to_time_stamp(df)
     print("Calculando los SLA")
     df = sla_calculo(df)
+    df = clean_numeric_columns(df, NUMERIC_COLUMNS)
     return df
+
 
 def db_modified():
     """

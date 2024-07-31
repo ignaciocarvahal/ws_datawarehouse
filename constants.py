@@ -39,7 +39,6 @@ DICCIONARIO_NUMEROS_NOMBRES = {
 }
 
 
-# Lista de columnas de fecha que deseas modificar
 COLUMNAS_FECHA = [
     "fecha_creacion_cliente", "fecha_creacion_proveedor", "fecha_ultima_recepcion",
     "fecha_ultima_carga_documentos", "fecha_de_creacion_del_consolidado",
@@ -50,3 +49,5 @@ COLUMNAS_FECHA = [
     "fecha_de_pago", "fecha_solicitud_despacho", "fecha_prog_despacho",
     "fecha_entrega_retiro"
 ]
+
+NUMERIC_COLUMNS = ['m3_recibidos', 'bultos_recepcionados', 'm3_esperados', 'peso_esperado', 'bultos_esperados']
