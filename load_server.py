@@ -23,6 +23,31 @@ from datetime import datetime, MINYEAR
 import pytz
 from datetime import datetime, timezone, timedelta
 
+def execute_bulk_insert(cursor, query, data):
+    """
+    Inserta múltiples registros en una tabla usando un solo comando INSERT.
+
+    Parameters
+    ----------
+    cursor : psycopg2 cursor object
+        Cursor de la conexión a la base de datos.
+    query : str
+        La consulta SQL base para el comando INSERT.
+    data : list of tuples
+        Los datos a insertar en la tabla.
+
+    Returns
+    -------
+    None
+    """
+    if not data:
+        return
+    # Determinar la cantidad de placeholders para el mogrify según la cantidad de columnas
+    num_columns = len(data[0])
+    placeholders = ', '.join(['%s'] * num_columns)
+    args_str = ','.join(cursor.mogrify(f"({placeholders})", x).decode("utf-8") for x in data)
+    cursor.execute(query + args_str)
+
 
 def load_dimensions(df, initial_index):
     """
@@ -41,13 +66,12 @@ def load_dimensions(df, initial_index):
         es la llave que une el datawarehouse.
     """
     # Datos de conexión
-    
     database = "ws_datawarehouse"
     host = "34.229.102.45"
     port = "5432"
     user = "postgres"
     password = "ignacio"
-    
+
     # Establece la conexión a la base de datos PostgreSQL
     conn = psycopg2.connect(
         host=host,
@@ -59,137 +83,120 @@ def load_dimensions(df, initial_index):
 
     # Abre un cursor para ejecutar consultas SQL
     cursor = conn.cursor()
-
-
-
     
+    tracking_data = []
+    proveedor_data = []
+    hitos_data = []
+    finanzas_data = []
+    contenedor_data = []
+    cliente_data = []
 
     # Itera a través de las filas del DataFrame 'df' e inserta los datos en ambas tablas
     for index, row in df.iterrows():
-        print("Dimentions load index:",index)
+        print("Dimentions load index:", index)
         n_carpeta = row['n_carpeta']
 
-        #DIM TRACKING 
-        tracking_id = row['tracking_id']
-        m3_recibidos = row['m3_recibidos']
-        bultos_recepcionados = row['bultos_recepcionados']
-        m3_esperados  = row['m3_esperados']
-        peso_esperado = row['peso_esperado']
-        bultos_esperados = row['bultos_esperados']
-
-        # Consulta SQL para insertar un nuevo registro en la tabla 'sla.tracking'
-        tracking_query = """INSERT INTO sla.tracking(
-	        id_dim_tracking, tracking_id, n_carpeta, m3_recibidos, bultos_recepcionados, m3_esperados, peso_esperado, bultos_esperados)
-	        VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
-        """
-
-        cursor.execute(tracking_query, (index, tracking_id, n_carpeta, m3_recibidos, bultos_recepcionados, m3_esperados, peso_esperado, bultos_esperados))
-        
-        #DIM PROVEEDOR
-        id_proveedor = row['id_proveedor']
-        nombre_proveedor = row['nombre_proveedor']
-        fecha_creacion_proveedor = row['fecha_creacion_proveedor']
-
-        # Consulta SQL para insertar un nuevo registro en la tabla 'sla.proveedor'
-        proveedor_query = """INSERT INTO sla.proveedor(
-            id_dim_proveedor, id_proveedor, n_carpeta, nombre_proveedor, fecha_creacion_proveedor)
-            VALUES (%s, %s, %s, %s, %s);
-        """
-
-        cursor.execute(proveedor_query, (index, id_proveedor, n_carpeta, nombre_proveedor, fecha_creacion_proveedor))
-        #DIM HITOS
-
-        fecha_ultima_recepcion = row['fecha_ultima_recepcion']
-        fecha_ultima_carga_documentos = row['fecha_ultima_carga_documentos']
-        fecha_cierre_consolidado_comercial = row['fecha_cierre_consolidado_comercial']
-        fecha_aprobacion_documentos = row['fecha_aprobacion_documentos']
-        fecha_consolidado_contenedor = row['fecha_consolidado_contenedor']
-        etd_nave_asignada = row['etd_nave_asignada']
-        eta = row['eta']
-        fecha_publicacion = row['fecha_publicacion']
-        fecha_aforo = row['fecha_aforo']
-        fecha_publicacion_aforo = row['fecha_publicacion_aforo']
-        fecha_retiro_puerto = row['fecha_retiro_puerto']
-        fecha_retiro = row['fecha_retiro']
-        fecha_desconsolidacion_pudahuel = row['fecha_desconsolidacion_pudahuel']
-        fecha_de_pago = row['fecha_de_pago']
-        fecha_solicitud_despacho = row['fecha_solicitud_despacho']
-        fecha_prog_despacho = row['fecha_prog_despacho']
-        fecha_entrega_retiro = row['fecha_entrega_retiro']
-
-
-        # Consulta SQL para insertar un nuevo registro en la tabla 'sla.hitos'
-        hitos_query = """INSERT INTO sla.hitos(
-            id_dim_hitos, fecha_ultima_recepcion, fecha_ultima_carga_documentos, fecha_cierre_consolidado_comercial, fecha_aprobacion_documentos, fecha_consolidado_contenedor, etd_nave_asignada, eta, fecha_publicacion, fecha_aforo, fecha_publicacion_aforo, fecha_retiro_puerto, fecha_retiro, fecha_desconsolidacion_pudahuel, fecha_de_pago, fecha_solicitud_despacho, fecha_prog_despacho, fecha_entrega_retiro)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
-        """
-
-        cursor.execute(hitos_query, (
-            index, fecha_ultima_recepcion, fecha_ultima_carga_documentos, fecha_cierre_consolidado_comercial, 
-            fecha_aprobacion_documentos, fecha_consolidado_contenedor, etd_nave_asignada, eta, fecha_publicacion, 
-            fecha_aforo, fecha_publicacion_aforo, fecha_retiro_puerto, fecha_retiro, fecha_desconsolidacion_pudahuel, 
-            fecha_de_pago, fecha_solicitud_despacho, fecha_prog_despacho, fecha_entrega_retiro
+        # DIM TRACKING 
+        tracking_data.append((
+            index, row['tracking_id'], n_carpeta, row['m3_recibidos'], row['bultos_recepcionados'], 
+            row['m3_esperados'], row['peso_esperado'], row['bultos_esperados']
         ))
-        #DIM FINANZAS
-        proforma_id = row['proforma_id']
-        estado_finanzas = row['estado_finanzas']
-        fecha_de_pago = row['fecha_de_pago']
-
-        # Consulta SQL para insertar un nuevo registro en la tabla 'sla.finanzas'
-        finanzas_query = """INSERT INTO sla.finanzas(
-            id_dim_finanzas, proforma_id, n_carpeta, estado_finanzas, fecha_de_pago)
-            VALUES (%s, %s, %s, %s, %s);
-        """
-
-        cursor.execute(finanzas_query, (index, proforma_id, n_carpeta, estado_finanzas, fecha_de_pago))
-        #DIM CONTENEDOR
-        n_contenedor = row['n_contenedor']
-        direccion_entrega = row['direccion_entrega']
-        comuna = row['comuna']
-
-        # Consulta SQL para insertar un nuevo registro en la tabla 'sla.contenedor'
-        contenedor_query = """INSERT INTO sla.contenedor(
-            id_dim_contenedor, n_carpeta, n_contenedor, direccion_entrega, comuna)
-            VALUES (%s, %s, %s, %s, %s);
-        """
-
-        cursor.execute(contenedor_query, (index, n_carpeta, n_contenedor, direccion_entrega, comuna))
         
-        #DIM CLIENTE
-        fecha_creacion_cliente = row['fecha_creacion_cliente']
-        razon_social_cliente = row['razon_social_cliente']
-        ejecutivo = row['ejecutivo']
-        ejecutivo_cuenta = row['ejecutivo_cuenta']
-        id_cliente = row['id_cliente']
+        # DIM PROVEEDOR
+        proveedor_data.append((
+            index, row['id_proveedor'], n_carpeta, row['nombre_proveedor'], row['fecha_creacion_proveedor']
+        ))
+        
+        # DIM HITOS
+        hitos_data.append((
+            index, row['fecha_ultima_recepcion'], row['fecha_ultima_carga_documentos'], 
+            row['fecha_cierre_consolidado_comercial'], row['fecha_aprobacion_documentos'], 
+            row['fecha_consolidado_contenedor'], row['etd_nave_asignada'], row['eta'], 
+            row['fecha_publicacion'], row['fecha_aforo'], row['fecha_publicacion_aforo'], 
+            row['fecha_retiro_puerto'], row['fecha_retiro'], row['fecha_desconsolidacion_pudahuel'], 
+            row['fecha_de_pago'], row['fecha_solicitud_despacho'], row['fecha_prog_despacho'], 
+            row['fecha_entrega_retiro']
+        ))
 
-        # Consulta SQL para insertar un nuevo registro en la tabla 'sla.cliente'
-        cliente_query = """INSERT INTO sla.cliente(
-            id_dim_cliente, n_carpeta, fecha_creacion_cliente, razon_social_cliente, ejecutivo, ejecutivo_cuenta, id_cliente)
-            VALUES (%s, %s, %s, %s, %s, %s, %s);
-        """
+        # DIM FINANZAS
+        finanzas_data.append((
+            index, row['proforma_id'], n_carpeta, row['estado_finanzas'], row['fecha_de_pago']
+        ))
 
-        cursor.execute(cliente_query, (index, n_carpeta, fecha_creacion_cliente, razon_social_cliente, ejecutivo, ejecutivo_cuenta, id_cliente))
+        # DIM CONTENEDOR
+        contenedor_data.append((
+            index, n_carpeta, row['n_contenedor'], row['direccion_entrega'], row['comuna']
+        ))
+        
+        # DIM CLIENTE
+        cliente_data.append((
+            index, n_carpeta, row['fecha_creacion_cliente'], row['razon_social_cliente'], 
+            row['ejecutivo'], row['ejecutivo_cuenta'], row['id_cliente']
+        ))
+
+    # Consultas SQL
+    tracking_query = """INSERT INTO sla.tracking(
+        id_dim_tracking, tracking_id, n_carpeta, m3_recibidos, bultos_recepcionados, m3_esperados, peso_esperado, bultos_esperados
+    ) VALUES """
+    proveedor_query = """INSERT INTO sla.proveedor(
+        id_dim_proveedor, id_proveedor, n_carpeta, nombre_proveedor, fecha_creacion_proveedor
+    ) VALUES """
+    hitos_query = """INSERT INTO sla.hitos(
+        id_dim_hitos, fecha_ultima_recepcion, fecha_ultima_carga_documentos, fecha_cierre_consolidado_comercial, fecha_aprobacion_documentos, fecha_consolidado_contenedor, etd_nave_asignada, eta, fecha_publicacion, fecha_aforo, fecha_publicacion_aforo, fecha_retiro_puerto, fecha_retiro, fecha_desconsolidacion_pudahuel, fecha_de_pago, fecha_solicitud_despacho, fecha_prog_despacho, fecha_entrega_retiro
+    ) VALUES """
+    finanzas_query = """INSERT INTO sla.finanzas(
+        id_dim_finanzas, proforma_id, n_carpeta, estado_finanzas, fecha_de_pago
+    ) VALUES """
+    contenedor_query = """INSERT INTO sla.contenedor(
+        id_dim_contenedor, n_carpeta, n_contenedor, direccion_entrega, comuna
+    ) VALUES """
+    cliente_query = """INSERT INTO sla.cliente(
+        id_dim_cliente, n_carpeta, fecha_creacion_cliente, razon_social_cliente, ejecutivo, ejecutivo_cuenta, id_cliente
+    ) VALUES """
+    
+    execute_bulk_insert(cursor, tracking_query, tracking_data)
+    print("DIM TRACKING CARGADA")
+    execute_bulk_insert(cursor, proveedor_query, proveedor_data)
+    print("DIM PROVEEDOR CARGADA")
+    execute_bulk_insert(cursor, hitos_query, hitos_data)
+    print("DIM HITOS CARGADA")
+    execute_bulk_insert(cursor, finanzas_query, finanzas_data)
+    print("DIM FINANZAS CARGADA")
+    execute_bulk_insert(cursor, contenedor_query, contenedor_data)
+    print("DIM CONTENEDOR CARGADA")
+    execute_bulk_insert(cursor, cliente_query, cliente_data)
+    print("DIM CLIENTE CARGADA")
 
     # Confirma los cambios en la base de datos
     conn.commit()
-
     # Cierra el cursor y la conexión
     cursor.close()
     conn.close()
 
     return 1
 
-
 def load_fact_table(df, initial_index):
+    """
+    Carga datos en las tablas de hechos 'sla.fact_servicio' y 'sla.fact_carpeta'.
 
+    Parameters
+    ----------
+    df : DataFrame pandas object
+        DataFrame con los datos a cargar.
+    initial_index : int
+        Índice inicial de la carga.
+
+    Returns
+    -------
+    int
+        Retorna 1 si la carga fue exitosa.
+    """
     # Datos de conexión
-
     database = "ws_datawarehouse"
     host = "34.229.102.45"
     port = "5432"
     user = "postgres"
     password = "ignacio"
- 
 
     # Establece la conexión a la base de datos PostgreSQL
     conn = psycopg2.connect(
@@ -204,56 +211,38 @@ def load_fact_table(df, initial_index):
     cursor = conn.cursor()
     print("Conectado al servidor")
 
+    fact_servicio_data = []
+    fact_carpeta_data = []
 
-    
     # Itera a través de las filas del DataFrame 'df' e inserta los datos en ambas tablas
     for index, row in df.iterrows():
-        print("Fact table load index:",index)
-        #FACT TABLE SERVICIO
-        fecha_creacion_consolidado_comercial = row['fecha_de_creacion_del_consolidado']
-        id_dim_contenedor = index
-        id_dim_finanzas = index
-        n_carpeta = row['n_carpeta']
-        id_consolidado_comercial = row['id_consolidado_comercial']
-        id_dim_hitos = index
-        id_dim_proveedor = index
-        id_dim_tracking = index
-
-        # Consulta SQL para insertar un nuevo registro en la tabla 'sla.fact_servicio'
-        fact_servicio_query = """INSERT INTO sla.fact_servicio(
-            id_servicio, fecha_creacion_consolidado_comercial, id_dim_contenedor, id_dim_finanzas, n_carpeta, id_consolidado_comercial, id_dim_hitos, id_dim_proveedor, id_dim_tracking)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
-        """
-
-        
-
-        cursor.execute(fact_servicio_query, (
-            index, fecha_creacion_consolidado_comercial, id_dim_contenedor, id_dim_finanzas, n_carpeta, id_consolidado_comercial, id_dim_hitos, id_dim_proveedor, id_dim_tracking
+        print("Fact table load index:", index)
+        # FACT TABLE SERVICIO
+        fact_servicio_data.append((
+            index, row['fecha_de_creacion_del_consolidado'], index, index, row['n_carpeta'],
+            row['id_consolidado_comercial'], index, index, index
         ))
-        
 
-        sla_1 = row['sla_1']
-        sla_2 = row['sla_2']
-        sla_3 = row['sla_3']
-        id_dim_cliente = index
-        sla_4 = row['sla_4']
-        sla_5 = row['sla_5']
-        sla_6 = row['sla_6']
-        sla_7 = row['sla_7']
-        sla_8 = row['sla_8']
-        sla_10 = row['sla_10']
-        sla_11 = row['sla_11']
-        n_carpeta = row['n_carpeta']
-
-        # Consulta SQL para insertar un nuevo registro en la tabla 'sla.fact_carpeta'
-        fact_carpeta_query = """INSERT INTO sla.fact_carpeta(
-            id_fact_carpeta, sla_1, sla_2, sla_3, id_dim_cliente, sla_4, sla_5, sla_6, sla_7, sla_8, sla_10, sla_11, n_carpeta)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
-        """
-        cursor.execute(fact_carpeta_query, (
-            index, sla_1, sla_2, sla_3, id_dim_cliente, sla_4, sla_5, sla_6, sla_7, sla_8, sla_10, sla_11, n_carpeta
+        # FACT TABLE CARPETA
+        fact_carpeta_data.append((
+            index, row['sla_1'], row['sla_2'], row['sla_3'], index, row['sla_4'], row['sla_5'],
+            row['sla_6'], row['sla_7'], row['sla_8'], row['sla_10'], row['sla_11'], row['n_carpeta']
         ))
-    #print("index salida", index)
+
+    # Consultas SQL
+    fact_servicio_query = """INSERT INTO sla.fact_servicio(
+        id_servicio, fecha_creacion_consolidado_comercial, id_dim_contenedor, id_dim_finanzas, n_carpeta, 
+        id_consolidado_comercial, id_dim_hitos, id_dim_proveedor, id_dim_tracking
+    ) VALUES """
+    fact_carpeta_query = """INSERT INTO sla.fact_carpeta(
+        id_fact_carpeta, sla_1, sla_2, sla_3, id_dim_cliente, sla_4, sla_5, sla_6, sla_7, sla_8, sla_10, sla_11, n_carpeta
+    ) VALUES """
+
+    execute_bulk_insert(cursor, fact_servicio_query, fact_servicio_data)
+    print("FACT TABLE SERVICIO CARGADA")
+    execute_bulk_insert(cursor, fact_carpeta_query, fact_carpeta_data)
+    print("FACT TABLE CARPETA CARGADA")
+
     # Confirma los cambios en la base de datos
     conn.commit()
 
@@ -262,6 +251,7 @@ def load_fact_table(df, initial_index):
     conn.close()
 
     return 1
+
 import time
 
 def loader(df, initial_index, batch_size, tipo_carga="incremental"):
@@ -326,7 +316,7 @@ start_time = datetime.now()
 
 print("Hora de inicio: ",start_time)
 delete_records_all_tables()
-df, initial_index, batch_size = db_modified(), 0, 200
+df, initial_index, batch_size = db_modified(), 0, 1500
 loader(df, initial_index, batch_size)
 
 end_time = datetime.now()

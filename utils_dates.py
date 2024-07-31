@@ -75,7 +75,7 @@ def connect_and_select():
 
         cur = conn.cursor()
 
-        query = """SELECT * FROM public.sla_00_completo limit 400;"""
+        query = """SELECT * FROM public.sla_00_completo;"""
         cur.execute(query)
 
         rows = cur.fetchall()
